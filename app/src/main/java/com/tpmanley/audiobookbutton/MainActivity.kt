@@ -1,12 +1,18 @@
 package com.tpmanley.audiobookbutton
 
+import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,10 +44,27 @@ class MainActivity : ComponentActivity() {
 
     private var sharedText by mutableStateOf<String?>(null)
     private var lastResult by mutableStateOf<String?>(null)
+    private var stopEnabled by mutableStateOf(false)
 
     override fun onResume() {
         super.onResume()
         lastResult = BookStore.lastResult(this)
+        stopEnabled = PlaybackStatus.hasAccess(this)
+        AudiobookWidgetProvider.refreshAll(this)
+    }
+
+    private fun openNotificationAccess() {
+        val component = ComponentName(this, MediaWatcherService::class.java).flattenToString()
+        val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+            .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, component)
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            detail.resolveActivity(packageManager) != null
+        ) detail else Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        startActivity(intent)
+    }
+
+    private fun openAppInfo() {
+        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +79,9 @@ class MainActivity : ComponentActivity() {
                         initial = saved,
                         sharedText = sharedText,
                         lastResult = lastResult,
+                        stopEnabled = stopEnabled,
+                        onGrantStop = ::openNotificationAccess,
+                        onAppInfo = ::openAppInfo,
                         onSave = ::save,
                         onTest = { book -> save(book); startActivity(Intent(this, PlayActivity::class.java)) },
                     )
@@ -84,6 +110,9 @@ private fun EditScreen(
     initial: Book?,
     sharedText: String?,
     lastResult: String?,
+    stopEnabled: Boolean,
+    onGrantStop: () -> Unit,
+    onAppInfo: () -> Unit,
     onSave: (Book) -> Unit,
     onTest: (Book) -> Unit,
 ) {
@@ -109,7 +138,7 @@ private fun EditScreen(
     }
 
     Column(
-        Modifier.safeDrawingPadding().padding(24.dp),
+        Modifier.safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.edit_heading), style = MaterialTheme.typography.headlineSmall)
@@ -145,6 +174,18 @@ private fun EditScreen(
             }
         }
         Text(stringResource(R.string.widget_hint), style = MaterialTheme.typography.bodySmall)
+
+        Text(stringResource(R.string.stop_heading), style = MaterialTheme.typography.titleSmall)
+        if (stopEnabled) {
+            Text(stringResource(R.string.stop_enabled), style = MaterialTheme.typography.bodySmall)
+        } else {
+            Text(stringResource(R.string.stop_disabled), style = MaterialTheme.typography.bodySmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onGrantStop) { Text(stringResource(R.string.stop_grant)) }
+                OutlinedButton(onClick = onAppInfo) { Text(stringResource(R.string.app_info)) }
+            }
+            Text(stringResource(R.string.stop_restricted_hint), style = MaterialTheme.typography.bodySmall)
+        }
         if (lastResult != null) {
             Text(stringResource(R.string.last_result), style = MaterialTheme.typography.titleSmall)
             SelectionContainer { Text(lastResult, style = MaterialTheme.typography.bodySmall) }

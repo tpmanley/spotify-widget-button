@@ -49,4 +49,5 @@ dependencies {
     implementation(libs.androidx.activity.compose)
 
     testImplementation(libs.junit)
+    testImplementation(libs.org.json) // real JSON parser; android.jar only has stubs
 }

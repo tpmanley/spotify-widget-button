@@ -1,6 +1,7 @@
 package com.tpmanley.audiobookbutton
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -29,6 +30,7 @@ class PlayActivity : Activity() {
     private var remote: SpotifyAppRemote? = null
     private var retried = false
     private var authTried = false
+    private var authForCheck = false
     private var done = false
     private var book: Book? = null
     private val timeout = Runnable { book?.let { if (!done) fail(it, getString(R.string.error_timeout)) } }
@@ -54,7 +56,63 @@ class PlayActivity : Activity() {
             fail(book, getString(R.string.error_spotify_missing))
             return
         }
+        checkOtherDevices(book)
+    }
+
+    // --- "Is someone already playing on another device?" (Web API) ---
+
+    private fun checkOtherDevices(book: Book) {
+        val token = SpotifyToken.valid(this)
+        if (token == null) {
+            if (!authTried) requestAuthorization(forCheck = true) else startConnecting(book)
+            return
+        }
+        step("Checking what Spotify is playing")
+        Thread {
+            val result = WebApi.currentPlayback(token)
+            runOnUiThread { if (!done && !isFinishing) onPlaybackChecked(book, result) }
+        }.start()
+    }
+
+    private fun onPlaybackChecked(book: Book, result: PlaybackCheck) {
+        step("Playback check: $result")
+        when (result) {
+            is PlaybackCheck.Playing ->
+                if (WebApi.isThisPhone(this, result).also { step("Is this phone? $it (${WebApi.describeThisPhone(this)})") }) startConnecting(book)
+                else askToTakeOver(book, result)
+            PlaybackCheck.Unauthorized -> {
+                SpotifyToken.clear(this)
+                if (!authTried) requestAuthorization(forCheck = true) else startConnecting(book)
+            }
+            // Nothing playing, or the check failed: don't let the check block playback.
+            else -> startConnecting(book)
+        }
+    }
+
+    private fun askToTakeOver(book: Book, playing: PlaybackCheck.Playing) {
+        val what = playing.what?.let { "“$it”" } ?: getString(R.string.takeover_something)
+        val title = book.title.ifBlank { getString(R.string.widget_untitled) }
+        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle(getString(R.string.takeover_title, playing.deviceName))
+            .setMessage(getString(R.string.takeover_message, what, playing.deviceName, title))
+            .setPositiveButton(R.string.takeover_yes) { _, _ -> step("User chose to take over"); startConnecting(book) }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> cancelled() }
+            .setOnCancelListener { cancelled() }
+            .show()
+    }
+
+    private fun cancelled() {
+        if (done) return
+        step("Cancelled; left the other device playing")
+        done = true
+        finish()
+    }
+
+    // --- Playing on this phone (App Remote) ---
+
+    private fun startConnecting(book: Book) {
         // Safety net so this activity never lingers.
+        handler.removeCallbacks(timeout)
         handler.postDelayed(timeout, TIMEOUT_MS)
         connect(book)
     }
@@ -92,7 +150,7 @@ class PlayActivity : Activity() {
                 answered = true
                 step("Connected")
                 remote = appRemote
-                playOrResume(appRemote, book)
+                switchToThisPhone(appRemote) { playOrResume(appRemote, book) }
             }
 
             override fun onFailure(error: Throwable) {
@@ -109,7 +167,7 @@ class PlayActivity : Activity() {
         step(if (error == null) "No answer from Spotify after ${CONNECT_TIMEOUT_MS / 1000}s" else "Connect failed: ${describe(error)}")
         when {
             error is UserNotAuthorizedException || error is AuthenticationFailedException ->
-                if (!authTried) requestAuthorization()
+                if (!authTried) requestAuthorization(forCheck = false)
                 else fail(book, getString(R.string.error_connect, describe(error)))
             error is NotLoggedInException -> fail(book, getString(R.string.error_not_logged_in))
             !retried -> {
@@ -123,7 +181,7 @@ class PlayActivity : Activity() {
                 handler.postDelayed({ if (!done) connect(book) }, 2_500)
             }
             // Still silent after waking Spotify: maybe it's waiting on approval.
-            !authTried -> requestAuthorization()
+            !authTried -> requestAuthorization(forCheck = false)
             else -> fail(book, getString(R.string.error_connect, error?.let(::describe) ?: "no response"))
         }
     }
@@ -132,13 +190,14 @@ class PlayActivity : Activity() {
      * App Remote's built-in approval prompt doesn't appear with current Spotify versions,
      * so get the one-time "app-remote-control" approval via the auth library instead.
      */
-    private fun requestAuthorization() {
+    private fun requestAuthorization(forCheck: Boolean) {
         authTried = true
+        authForCheck = forCheck
         handler.removeCallbacks(timeout) // The user may take a while on the approval screen.
         step("Asking Spotify for approval")
         val request = AuthorizationRequest.Builder(
             Config.CLIENT_ID, AuthorizationResponse.Type.TOKEN, Config.REDIRECT_URI,
-        ).setScopes(arrayOf("app-remote-control")).build()
+        ).setScopes(SCOPES).build()
         AuthorizationClient.openLoginActivity(this, AUTH_REQUEST, request)
     }
 
@@ -151,14 +210,31 @@ class PlayActivity : Activity() {
         step("Approval result: ${response.type} ${response.error.orEmpty()}")
         when (response.type) {
             AuthorizationResponse.Type.TOKEN -> {
-                Log.i(Config.TAG, "Spotify approval granted")
-                handler.postDelayed(timeout, TIMEOUT_MS)
-                connect(book)
+                SpotifyToken.save(this, response.accessToken, response.expiresIn)
+                if (authForCheck) checkOtherDevices(book) else startConnecting(book)
             }
+            // A failed check shouldn't stop playback; App Remote will ask again if it must.
             AuthorizationResponse.Type.ERROR ->
-                fail(book, getString(R.string.error_auth, response.error.orEmpty()))
-            else -> fail(book, getString(R.string.error_auth, "cancelled"))
+                if (authForCheck) startConnecting(book)
+                else fail(book, getString(R.string.error_auth, response.error.orEmpty()))
+            else ->
+                if (authForCheck) startConnecting(book)
+                else fail(book, getString(R.string.error_auth, "cancelled"))
         }
+    }
+
+    /**
+     * App Remote commands go to Spotify's *active* device, which may be a speaker or computer.
+     * Pull playback onto this phone first so the book plays here.
+     */
+    private fun switchToThisPhone(appRemote: SpotifyAppRemote, then: () -> Unit) {
+        var continued = false
+        fun next() { if (!continued && !done) { continued = true; then() } }
+        step("Switching playback to this phone")
+        appRemote.connectApi.connectSwitchToLocalDevice()
+            .setResultCallback { step("Switched to this phone"); next() }
+            .setErrorCallback { step("Switch to this phone failed: ${describe(it)}"); next() }
+        handler.postDelayed({ if (!continued) step("No answer to switch after 3s, continuing"); next() }, 3_000)
     }
 
     private fun playOrResume(appRemote: SpotifyAppRemote, book: Book) {
@@ -261,7 +337,8 @@ class PlayActivity : Activity() {
     }
 
     private companion object {
-        const val SPOTIFY_PACKAGE = "com.spotify.music"
+        const val SPOTIFY_PACKAGE = PlaybackStatus.SPOTIFY_PACKAGE
+        val SCOPES = arrayOf("app-remote-control", "user-read-playback-state")
         const val AUTH_REQUEST = 1337
         const val TIMEOUT_MS = 30_000L
         const val CONNECT_TIMEOUT_MS = 6_000L

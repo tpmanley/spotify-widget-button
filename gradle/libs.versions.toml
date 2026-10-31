@@ -6,6 +6,7 @@ activityCompose = "1.11.0"
 gson = "2.13.2"
 spotifyAuth = "2.1.2"
 junit = "4.13.2"
+orgJson = "20250517"
 
 [libraries]
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -14,6 +15,7 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 spotify-auth = { group = "com.spotify.android", name = "auth", version.ref = "spotifyAuth" }
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]

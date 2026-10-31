@@ -20,4 +20,16 @@
     <string name="error_auth">Spotify approval failed (%1$s)</string>
     <string name="error_not_logged_in">Log in to the Spotify app first</string>
     <string name="last_result">Last widget tap</string>
+    <string name="stop">Stop</string>
+    <string name="play">Play</string>
+    <string name="takeover_title">Playing on %1$s</string>
+    <string name="takeover_message">%1$s is playing on %2$s. Play %3$s on this phone instead? That will stop it there.</string>
+    <string name="takeover_something">Something</string>
+    <string name="takeover_yes">Play here</string>
+    <string name="stop_heading">Stop button</string>
+    <string name="stop_enabled">On: the widget\'s button becomes Stop while Spotify is playing on this phone.</string>
+    <string name="stop_disabled">To turn the widget\'s Play button into Stop while Spotify plays on this phone, allow notification access. The app only watches Spotify\'s playback state.</string>
+    <string name="stop_restricted_hint">If the switch is greyed out (\"Restricted setting\"): open App info for Audiobook Button → ⋮ menu → Allow restricted settings, then try again.</string>
+    <string name="stop_grant">Allow notification access</string>
+    <string name="app_info">Open App info</string>
 </resources>
