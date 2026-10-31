@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Audiobook Button</string>
+    <string name="share_label">Set as Audiobook Button</string>
+    <string name="widget_description">One tap to play your audiobook in Spotify</string>
+    <string name="widget_not_set">Tap to choose a book</string>
+    <string name="widget_untitled">Play audiobook</string>
+    <string name="edit_heading">Which audiobook should the widget play?</string>
+    <string name="edit_help">In Spotify, open the audiobook, tap Share → Audiobook Button. Or paste a link here.</string>
+    <string name="link_label">Spotify link or URI</string>
+    <string name="link_invalid">Not a recognized Spotify link (expected open.spotify.com/audiobook/…)</string>
+    <string name="title_label">Title shown on the widget</string>
+    <string name="save">Save</string>
+    <string name="test_play">Save &amp; play</string>
+    <string name="saved">Saved</string>
+    <string name="widget_hint">Then long-press your home screen → Widgets → Audiobook Button.</string>
+    <string name="error_spotify_missing">Spotify isn\'t installed</string>
+    <string name="error_timeout">Spotify didn\'t respond; opening the book instead</string>
+    <string name="error_connect">Couldn\'t connect to Spotify (%1$s)</string>
+    <string name="error_play">Spotify couldn\'t play it (%1$s)</string>
+    <string name="error_auth">Spotify approval failed (%1$s)</string>
+    <string name="error_not_logged_in">Log in to the Spotify app first</string>
+    <string name="last_result">Last widget tap</string>
+</resources>
