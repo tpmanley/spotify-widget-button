@@ -1,4 +1,4 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

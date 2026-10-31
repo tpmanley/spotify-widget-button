@@ -1,20 +1,21 @@
 <resources>
-    <string name="app_name">Audiobook Button</string>
-    <string name="share_label">Set as Audiobook Button</string>
-    <string name="widget_description">One tap to play your audiobook in Spotify</string>
-    <string name="widget_not_set">Tap to choose a book</string>
-    <string name="widget_untitled">Play audiobook</string>
-    <string name="edit_heading">Which audiobook should the widget play?</string>
-    <string name="edit_help">In Spotify, open the audiobook, tap Share → Audiobook Button. Or paste a link here.</string>
+    <!-- Not "Spotify …": Spotify's developer terms don't allow its name in app names. -->
+    <string name="app_name">One-Tap Play</string>
+    <string name="share_label">Set as One-Tap Play</string>
+    <string name="widget_description">One tap to play your chosen audiobook, podcast, album or playlist in Spotify</string>
+    <string name="widget_not_set">Tap to choose what to play</string>
+    <string name="widget_untitled">Play</string>
+    <string name="edit_heading">What should the widget play?</string>
+    <string name="edit_help">In Spotify, open an audiobook, podcast, album, playlist, artist or song, tap Share → One-Tap Play. Or paste a link here.</string>
     <string name="link_label">Spotify link or URI</string>
-    <string name="link_invalid">Not a recognized Spotify link (expected open.spotify.com/audiobook/…)</string>
+    <string name="link_invalid">Not a recognized Spotify link (expected open.spotify.com/…/…)</string>
     <string name="title_label">Title shown on the widget</string>
     <string name="save">Save</string>
     <string name="test_play">Save &amp; play</string>
     <string name="saved">Saved</string>
-    <string name="widget_hint">Then long-press your home screen → Widgets → Audiobook Button.</string>
+    <string name="widget_hint">Then long-press your home screen → Widgets → One-Tap Play.</string>
     <string name="error_spotify_missing">Spotify isn\'t installed</string>
-    <string name="error_timeout">Spotify didn\'t respond; opening the book instead</string>
+    <string name="error_timeout">Spotify didn\'t respond; opening it in Spotify instead</string>
     <string name="error_connect">Couldn\'t connect to Spotify (%1$s)</string>
     <string name="error_play">Spotify couldn\'t play it (%1$s)</string>
     <string name="error_auth">Spotify approval failed (%1$s)</string>
@@ -25,11 +26,12 @@
     <string name="takeover_title">Playing on %1$s</string>
     <string name="takeover_message">%1$s is playing on %2$s. Play %3$s on this phone instead? That will stop it there.</string>
     <string name="takeover_something">Something</string>
+    <string name="takeover_untitled">your saved item</string>
     <string name="takeover_yes">Play here</string>
     <string name="stop_heading">Stop button</string>
     <string name="stop_enabled">On: the widget\'s button becomes Stop while Spotify is playing on this phone.</string>
     <string name="stop_disabled">To turn the widget\'s Play button into Stop while Spotify plays on this phone, allow notification access. The app only watches Spotify\'s playback state.</string>
-    <string name="stop_restricted_hint">If the switch is greyed out (\"Restricted setting\"): open App info for Audiobook Button → ⋮ menu → Allow restricted settings, then try again.</string>
+    <string name="stop_restricted_hint">If the switch is greyed out (\"Restricted setting\"): open App info for One-Tap Play → ⋮ menu → Allow restricted settings, then try again.</string>
     <string name="stop_grant">Allow notification access</string>
     <string name="app_info">Open App info</string>
 </resources>

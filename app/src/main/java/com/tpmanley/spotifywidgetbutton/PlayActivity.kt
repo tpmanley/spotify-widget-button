@@ -1,4 +1,4 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import android.app.Activity
 import android.app.AlertDialog
@@ -22,7 +22,7 @@ import com.spotify.protocol.types.PlayerContext
 
 /**
  * Invisible trampoline launched by the widget: connects to the Spotify app,
- * starts (or resumes) the saved audiobook, then closes.
+ * starts (or resumes) the saved Spotify item, then closes.
  */
 class PlayActivity : Activity() {
 
@@ -32,70 +32,70 @@ class PlayActivity : Activity() {
     private var authTried = false
     private var authForCheck = false
     private var done = false
-    private var book: Book? = null
-    private val timeout = Runnable { book?.let { if (!done) fail(it, getString(R.string.error_timeout)) } }
+    private var item: SpotifyItem? = null
+    private val timeout = Runnable { item?.let { if (!done) fail(it, getString(R.string.error_timeout)) } }
     private var connectAttempt = 0
 
     private fun step(message: String) {
         Log.i(Config.TAG, message)
-        BookStore.trace(this, message)
+        ItemStore.trace(this, message)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        BookStore.startTrace(this)
-        val book = BookStore.load(this)
-        this.book = book
-        step("Book: ${book?.uri}")
-        if (book == null) {
+        ItemStore.startTrace(this)
+        val item = ItemStore.load(this)
+        this.item = item
+        step("SpotifyItem: ${item?.uri}")
+        if (item == null) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
             return
         }
         if (!SpotifyAppRemote.isSpotifyInstalled(this)) {
-            fail(book, getString(R.string.error_spotify_missing))
+            fail(item, getString(R.string.error_spotify_missing))
             return
         }
-        checkOtherDevices(book)
+        checkOtherDevices(item)
     }
 
     // --- "Is someone already playing on another device?" (Web API) ---
 
-    private fun checkOtherDevices(book: Book) {
+    private fun checkOtherDevices(item: SpotifyItem) {
         val token = SpotifyToken.valid(this)
         if (token == null) {
-            if (!authTried) requestAuthorization(forCheck = true) else startConnecting(book)
+            if (!authTried) requestAuthorization(forCheck = true) else startConnecting(item)
             return
         }
         step("Checking what Spotify is playing")
         Thread {
             val result = WebApi.currentPlayback(token)
-            runOnUiThread { if (!done && !isFinishing) onPlaybackChecked(book, result) }
+            runOnUiThread { if (!done && !isFinishing) onPlaybackChecked(item, result) }
         }.start()
     }
 
-    private fun onPlaybackChecked(book: Book, result: PlaybackCheck) {
+    private fun onPlaybackChecked(item: SpotifyItem, result: PlaybackCheck) {
         step("Playback check: $result")
         when (result) {
             is PlaybackCheck.Playing ->
-                if (WebApi.isThisPhone(this, result).also { step("Is this phone? $it (${WebApi.describeThisPhone(this)})") }) startConnecting(book)
-                else askToTakeOver(book, result)
+                if (WebApi.isThisPhone(this, result).also { step("Is this phone? $it (${WebApi.describeThisPhone(this)})") }) startConnecting(item)
+                else askToTakeOver(item, result)
             PlaybackCheck.Unauthorized -> {
                 SpotifyToken.clear(this)
-                if (!authTried) requestAuthorization(forCheck = true) else startConnecting(book)
+                if (!authTried) requestAuthorization(forCheck = true) else startConnecting(item)
             }
             // Nothing playing, or the check failed: don't let the check block playback.
-            else -> startConnecting(book)
+            else -> startConnecting(item)
         }
     }
 
-    private fun askToTakeOver(book: Book, playing: PlaybackCheck.Playing) {
+    private fun askToTakeOver(item: SpotifyItem, playing: PlaybackCheck.Playing) {
         val what = playing.what?.let { "“$it”" } ?: getString(R.string.takeover_something)
-        val title = book.title.ifBlank { getString(R.string.widget_untitled) }
+        val title = item.title.ifBlank { getString(R.string.takeover_untitled) }
         AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle(getString(R.string.takeover_title, playing.deviceName))
             .setMessage(getString(R.string.takeover_message, what, playing.deviceName, title))
-            .setPositiveButton(R.string.takeover_yes) { _, _ -> step("User chose to take over"); startConnecting(book) }
+            .setPositiveButton(R.string.takeover_yes) { _, _ -> step("User chose to take over"); startConnecting(item) }
             .setNegativeButton(android.R.string.cancel) { _, _ -> cancelled() }
             .setOnCancelListener { cancelled() }
             .show()
@@ -110,11 +110,11 @@ class PlayActivity : Activity() {
 
     // --- Playing on this phone (App Remote) ---
 
-    private fun startConnecting(book: Book) {
+    private fun startConnecting(item: SpotifyItem) {
         // Safety net so this activity never lingers.
         handler.removeCallbacks(timeout)
         handler.postDelayed(timeout, TIMEOUT_MS)
-        connect(book)
+        connect(item)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -122,7 +122,7 @@ class PlayActivity : Activity() {
         step("Widget tapped again while still working; ignoring")
     }
 
-    private fun connect(book: Book) {
+    private fun connect(item: SpotifyItem) {
         val attempt = ++connectAttempt
         step("Connecting to Spotify (attempt $attempt)")
         // No built-in auth view: with it, connect() can hang forever instead of reporting
@@ -136,7 +136,7 @@ class PlayActivity : Activity() {
         handler.postDelayed({
             if (!answered && !done && attempt == connectAttempt) {
                 answered = true
-                onConnectFailed(book, null)
+                onConnectFailed(item, null)
             }
         }, CONNECT_TIMEOUT_MS)
 
@@ -150,26 +150,26 @@ class PlayActivity : Activity() {
                 answered = true
                 step("Connected")
                 remote = appRemote
-                switchToThisPhone(appRemote) { playOrResume(appRemote, book) }
+                switchToThisPhone(appRemote) { playOrResume(appRemote, item) }
             }
 
             override fun onFailure(error: Throwable) {
                 Log.w(Config.TAG, "Spotify connection failed", error)
                 if (answered || done) return
                 answered = true
-                onConnectFailed(book, error)
+                onConnectFailed(item, error)
             }
         })
     }
 
     /** [error] is null when Spotify never answered. */
-    private fun onConnectFailed(book: Book, error: Throwable?) {
+    private fun onConnectFailed(item: SpotifyItem, error: Throwable?) {
         step(if (error == null) "No answer from Spotify after ${CONNECT_TIMEOUT_MS / 1000}s" else "Connect failed: ${describe(error)}")
         when {
             error is UserNotAuthorizedException || error is AuthenticationFailedException ->
                 if (!authTried) requestAuthorization(forCheck = false)
-                else fail(book, getString(R.string.error_connect, describe(error)))
-            error is NotLoggedInException -> fail(book, getString(R.string.error_not_logged_in))
+                else fail(item, getString(R.string.error_connect, describe(error)))
+            error is NotLoggedInException -> fail(item, getString(R.string.error_not_logged_in))
             !retried -> {
                 // Spotify may be fully closed; wake it up and try once more.
                 retried = true
@@ -178,11 +178,11 @@ class PlayActivity : Activity() {
                     it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(it)
                 }
-                handler.postDelayed({ if (!done) connect(book) }, 2_500)
+                handler.postDelayed({ if (!done) connect(item) }, 2_500)
             }
             // Still silent after waking Spotify: maybe it's waiting on approval.
             !authTried -> requestAuthorization(forCheck = false)
-            else -> fail(book, getString(R.string.error_connect, error?.let(::describe) ?: "no response"))
+            else -> fail(item, getString(R.string.error_connect, error?.let(::describe) ?: "no response"))
         }
     }
 
@@ -205,27 +205,27 @@ class PlayActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != AUTH_REQUEST) return
-        val book = book ?: return
+        val item = item ?: return
         val response = AuthorizationClient.getResponse(resultCode, data)
         step("Approval result: ${response.type} ${response.error.orEmpty()}")
         when (response.type) {
             AuthorizationResponse.Type.TOKEN -> {
                 SpotifyToken.save(this, response.accessToken, response.expiresIn)
-                if (authForCheck) checkOtherDevices(book) else startConnecting(book)
+                if (authForCheck) checkOtherDevices(item) else startConnecting(item)
             }
             // A failed check shouldn't stop playback; App Remote will ask again if it must.
             AuthorizationResponse.Type.ERROR ->
-                if (authForCheck) startConnecting(book)
-                else fail(book, getString(R.string.error_auth, response.error.orEmpty()))
+                if (authForCheck) startConnecting(item)
+                else fail(item, getString(R.string.error_auth, response.error.orEmpty()))
             else ->
-                if (authForCheck) startConnecting(book)
-                else fail(book, getString(R.string.error_auth, "cancelled"))
+                if (authForCheck) startConnecting(item)
+                else fail(item, getString(R.string.error_auth, "cancelled"))
         }
     }
 
     /**
      * App Remote commands go to Spotify's *active* device, which may be a speaker or computer.
-     * Pull playback onto this phone first so the book plays here.
+     * Pull playback onto this phone first so the item plays here.
      */
     private fun switchToThisPhone(appRemote: SpotifyAppRemote, then: () -> Unit) {
         var continued = false
@@ -237,10 +237,10 @@ class PlayActivity : Activity() {
         handler.postDelayed({ if (!continued) step("No answer to switch after 3s, continuing"); next() }, 3_000)
     }
 
-    private fun playOrResume(appRemote: SpotifyAppRemote, book: Book) {
+    private fun playOrResume(appRemote: SpotifyAppRemote, item: SpotifyItem) {
         val player = appRemote.playerApi
         var decided = false
-        val bookId = SpotifyLink.idOf(book.uri)
+        val itemId = SpotifyLink.idOf(item.uri)
 
         fun playUri(uri: String, fallback: String?) {
             step("play($uri)")
@@ -254,7 +254,7 @@ class PlayActivity : Activity() {
                     if (fallback != null) {
                         playUri(fallback, null)
                     } else {
-                        fail(book, getString(R.string.error_play, describe(error)))
+                        fail(item, getString(R.string.error_play, describe(error)))
                     }
                 }
             // Spotify sometimes starts playback without ever answering; check what it's doing.
@@ -265,7 +265,7 @@ class PlayActivity : Activity() {
                     step("Player: paused=${state.isPaused} track=${state.track?.uri} (${state.track?.name})")
                     if (!state.isPaused) succeed("Playing (Spotify never confirmed)")
                     else if (fallback != null) playUri(fallback, null)
-                    else fail(book, getString(R.string.error_play, "no response"))
+                    else fail(item, getString(R.string.error_play, "no response"))
                 }.setErrorCallback { step("Player state failed: ${describe(it)}") }
             }, 5_000)
         }
@@ -273,34 +273,56 @@ class PlayActivity : Activity() {
         fun play() {
             if (decided) return
             decided = true
-            playUri(book.uri, SpotifyLink.alternateUri(book.uri))
+            playUri(item.uri, SpotifyLink.alternateUri(item.uri))
         }
 
-        // If the book is already the current context, resume rather than restart it.
-        val sub = player.subscribeToPlayerContext()
-        sub.setEventCallback { ctx: PlayerContext ->
-            if (decided) return@setEventCallback
-            sub.cancel()
-            step("Current context: ${ctx.uri}")
-            if (bookId != null && ctx.uri != null && SpotifyLink.idOf(ctx.uri) == bookId) {
-                decided = true
-                player.playerState.setResultCallback { state ->
-                    if (state.isPaused) {
-                        player.resume().setResultCallback { succeed("Resumed ${ctx.uri}") }
-                            .setErrorCallback { fail(book, getString(R.string.error_play, describe(it))) }
-                    } else {
-                        succeed("Already playing ${ctx.uri}")
-                    }
-                }.setErrorCallback { decided = false; play() }
+        fun resumeOrKeepPlaying(isPaused: Boolean, what: String) {
+            decided = true
+            if (isPaused) {
+                player.resume().setResultCallback { succeed("Resumed $what") }
+                    .setErrorCallback { fail(item, getString(R.string.error_play, describe(it))) }
             } else {
-                play()
+                succeed("Already playing $what")
             }
-        }.setErrorCallback { step("Context subscription failed: ${describe(it)}"); play() }
-        // Some Spotify versions never emit a context event when idle.
-        handler.postDelayed({
-            if (!decided) step("No context after 1.5s")
-            sub.cancel(); play()
-        }, 1_500)
+        }
+
+        // If the saved item is already loaded, resume rather than restart it. Single tracks,
+        // episodes and chapters are matched against the current track; albums, playlists,
+        // shows, audiobooks and artists against the current context (below).
+        var contextChecked = false
+        fun checkContext() {
+            if (contextChecked || decided) return
+            contextChecked = true
+            val sub = player.subscribeToPlayerContext()
+            sub.setEventCallback { ctx: PlayerContext ->
+                if (decided) return@setEventCallback
+                sub.cancel()
+                step("Current context: ${ctx.uri}")
+                if (itemId != null && ctx.uri != null && SpotifyLink.idOf(ctx.uri) == itemId) {
+                    decided = true
+                    player.playerState.setResultCallback { state -> resumeOrKeepPlaying(state.isPaused, ctx.uri) }
+                        .setErrorCallback { decided = false; play() }
+                } else {
+                    play()
+                }
+            }.setErrorCallback { step("Context subscription failed: ${describe(it)}"); play() }
+            // Some Spotify versions never emit a context event when idle.
+            handler.postDelayed({
+                if (!decided) step("No context after 1.5s")
+                sub.cancel(); play()
+            }, 1_500)
+        }
+
+        player.playerState.setResultCallback { state ->
+            val trackUri = state.track?.uri
+            if (!decided && itemId != null && trackUri != null && SpotifyLink.idOf(trackUri) == itemId) {
+                step("Current track is the saved item")
+                resumeOrKeepPlaying(state.isPaused, trackUri)
+            } else {
+                checkContext()
+            }
+        }.setErrorCallback { checkContext() }
+        handler.postDelayed({ checkContext() }, 1_500) // in case the player state never arrives
     }
 
     private fun describe(error: Throwable): String =
@@ -313,16 +335,16 @@ class PlayActivity : Activity() {
         finish()
     }
 
-    private fun fail(book: Book, message: String) {
+    private fun fail(item: SpotifyItem, message: String) {
         if (done) return
         done = true
         step("FAILED - $message")
         Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
-        // Fall back to opening the book page so it's one more tap to play.
+        // Fall back to opening the item page so it's one more tap to play.
         try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(book.uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: Exception) {
-            SpotifyLink.toWebUrl(book.uri)?.let {
+            SpotifyLink.toWebUrl(item.uri)?.let {
                 runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
         }

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Notes for coding agents working on Audiobook Button. See `README.md` for what the app does and how users set it up.
+Notes for coding agents working on spotify-widget-button. The app is called "One-Tap Play"; Spotify's terms don't allow its name in app names. See `README.md` for what the app does and how users set it up.
 
 ## Build and test
 ```sh
@@ -12,21 +12,21 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"  
 - Spotify App Remote isn't on Maven, so it's vendored as `app/libs/spotify-app-remote-release-0.8.0.aar`. It needs `gson`. The auth library comes from Maven: `com.spotify.android:auth`.
 
 ## Testing on a device
-- There's usually **no adb connection** to the owner's phone. The way changes get tested is: build the APK, send the file to the user, they install it, tap the widget, and paste back the **Last widget tap** log from the app.
+- The app logs under the `WidgetButton` tag. There's usually **no adb connection** to the owner's phone. The way changes get tested is: build the APK, send the file to the user, they install it, tap the widget, and paste back the **Last widget tap** log from the app.
 - When you add or change behaviour in `PlayActivity`, record each meaningful step with `step("…")`. That log is the main debugging tool, so make steps say *why* a decision was made, not just what happened.
 - Nothing involving Spotify can be checked in an emulator. Say clearly what was only built and unit-tested and what was confirmed on the phone.
 
 ## Architecture
 | File | Role |
 |---|---|
-| `AudiobookWidgetProvider` | `RemoteViews` widget with one toggle button: Play opens `PlayActivity`; Stop sends a broadcast to `StopReceiver` |
-| `PlayActivity` | Invisible single-task trampoline. Flow: check other devices (Web API) → maybe ask "Play here?" → App Remote connect → `connectSwitchToLocalDevice()` → resume or play → finish. Falls back to opening the book page on failure |
+| `PlayWidgetProvider` | `RemoteViews` widget with one toggle button: Play opens `PlayActivity`; Stop sends a broadcast to `StopReceiver` |
+| `PlayActivity` | Invisible single-task trampoline. Flow: check other devices (Web API) → maybe ask "Play here?" → App Remote connect → `connectSwitchToLocalDevice()` → resume if the item is already loaded (matching the current track first, then the context) or play → finish. Falls back to opening the item in Spotify on failure |
 | `WebApi` / `SpotifyToken` | `GET /v1/me/player` and device classification (`isThisPhone`). The token comes from the auth library's TOKEN flow, lasts about 1h and can't be refreshed; it's cached in prefs |
 | `MediaWatcherService` | `NotificationListenerService`, used only to watch Spotify's `MediaSession` and Android's audio playback state, so the widget switches between Play and Stop |
 | `PlaybackStatus` | Decides "playing on this phone" (see the pitfalls below), finds Spotify's `MediaController` |
 | `StopReceiver` | Pauses Spotify through its media session |
 | `MainActivity` | Compose edit screen: link/title, Share-sheet intake, notification-access setup, last-tap log |
-| `BookStore`, `SpotifyLink`, `OEmbed` | Prefs storage, link → `spotify:<type>:<id>` parsing, title lookup |
+| `ItemStore` (`SpotifyItem`), `SpotifyLink`, `OEmbed` | Prefs storage, link → `spotify:<type>:<id>` parsing (audiobook, show, episode, chapter, album, playlist, track, artist), title lookup |
 
 ## Pitfalls we hit
 These are confirmed on a real device (Oct 2026). Don't "simplify" them away.
@@ -40,6 +40,6 @@ These are confirmed on a real device (Oct 2026). Don't "simplify" them away.
 - **Audiobooks may be saved as `spotify:show:` URIs.** Playback tries the alternate form (`SpotifyLink.alternateUri`), and the "already playing" check compares IDs, not full URIs.
 
 ## Conventions
-- Keep it small and dependency-light. The widget uses plain `RemoteViews`, not Glance.
+- Keep it general, not audiobook-specific. Keep it small and dependency-light. The widget uses plain `RemoteViews`, not Glance.
 - A failed "other device" check must never block playback. Just continue.
 - User-facing strings go in `res/values/strings.xml`.

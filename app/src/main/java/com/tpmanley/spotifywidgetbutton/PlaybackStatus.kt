@@ -1,4 +1,4 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import android.content.ComponentName
 import android.content.Context

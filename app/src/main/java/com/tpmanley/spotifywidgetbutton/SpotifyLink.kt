@@ -1,8 +1,8 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 /** Turns pasted Spotify links/URIs into canonical `spotify:<type>:<id>` URIs. */
 object SpotifyLink {
-    private val SUPPORTED_TYPES = setOf("audiobook", "show", "episode", "album", "playlist", "track", "chapter")
+    private val SUPPORTED_TYPES = setOf("audiobook", "show", "episode", "album", "playlist", "track", "chapter", "artist")
     private val ID = Regex("[A-Za-z0-9]{22}")
     private val URI_RE = Regex("""spotify:([a-z]+):([A-Za-z0-9]+)""")
     // Handles optional locale segment, e.g. open.spotify.com/intl-de/audiobook/<id>

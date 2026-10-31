@@ -1,20 +1,21 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import android.content.Context
 
-data class Book(val uri: String, val title: String)
+/** The one Spotify item (audiobook, podcast, album, playlist, …) the widget plays. */
+data class SpotifyItem(val uri: String, val title: String)
 
-/** Persists the one audiobook the widget plays. */
-object BookStore {
-    private const val PREFS = "book"
+/** Persists the item the widget plays. */
+object ItemStore {
+    private const val PREFS = "item"
     private const val KEY_URI = "uri"
     private const val KEY_TITLE = "title"
     private const val KEY_LAST_RESULT = "last_result"
 
-    fun load(context: Context): Book? {
+    fun load(context: Context): SpotifyItem? {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val uri = prefs.getString(KEY_URI, null) ?: return null
-        return Book(uri, prefs.getString(KEY_TITLE, null).orEmpty())
+        return SpotifyItem(uri, prefs.getString(KEY_TITLE, null).orEmpty())
     }
 
     /** Step-by-step log of the most recent widget tap, shown on the edit screen for troubleshooting. */
@@ -34,10 +35,10 @@ object BookStore {
     fun lastResult(context: Context): String? =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LAST_RESULT, null)
 
-    fun save(context: Context, book: Book) {
+    fun save(context: Context, item: SpotifyItem) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(KEY_URI, book.uri)
-            .putString(KEY_TITLE, book.title)
+            .putString(KEY_URI, item.uri)
+            .putString(KEY_TITLE, item.title)
             .apply()
     }
 }

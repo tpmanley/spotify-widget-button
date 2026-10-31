@@ -1,4 +1,4 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import android.content.ComponentName
 import android.media.AudioManager
@@ -71,7 +71,7 @@ class MediaWatcherService : NotificationListenerService() {
 
     private fun publishNow() {
         if (PlaybackStatus.setPlayingLocally(this, PlaybackStatus.isLocalPlaying(this, spotify))) {
-            AudiobookWidgetProvider.refreshAll(this)
+            PlayWidgetProvider.refreshAll(this)
         }
     }
 }

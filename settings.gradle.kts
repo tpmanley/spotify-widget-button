@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "AudiobookButton"
+rootProject.name = "SpotifyWidgetButton"
 include(":app")

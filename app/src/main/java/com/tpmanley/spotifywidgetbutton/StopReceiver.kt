@@ -1,4 +1,4 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -15,6 +15,6 @@ class StopReceiver : BroadcastReceiver() {
             controller.transportControls.pause()
         }
         // The media watcher will confirm, but hide the button right away.
-        if (PlaybackStatus.setPlayingLocally(context, false)) AudiobookWidgetProvider.refreshAll(context)
+        if (PlaybackStatus.setPlayingLocally(context, false)) PlayWidgetProvider.refreshAll(context)
     }
 }

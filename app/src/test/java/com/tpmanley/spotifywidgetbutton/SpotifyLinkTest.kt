@@ -1,4 +1,4 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -42,4 +42,15 @@ class SpotifyLinkTest {
     @Test fun noAlternateForAlbum() = assertNull(SpotifyLink.alternateUri("spotify:album:$id"))
 
     @Test fun idOfUri() = assertEquals(id, SpotifyLink.idOf("spotify:audiobook:$id"))
+
+    @Test fun playlistUrl() =
+        assertEquals("spotify:playlist:$id", SpotifyLink.toUri("https://open.spotify.com/playlist/$id?si=abc"))
+
+    @Test fun albumUrl() =
+        assertEquals("spotify:album:$id", SpotifyLink.toUri("https://open.spotify.com/album/$id"))
+
+    @Test fun artistUrl() =
+        assertEquals("spotify:artist:$id", SpotifyLink.toUri("https://open.spotify.com/artist/$id"))
+
+    @Test fun trackUri() = assertEquals("spotify:track:$id", SpotifyLink.toUri("spotify:track:$id"))
 }

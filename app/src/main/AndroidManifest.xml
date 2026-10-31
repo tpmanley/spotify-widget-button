@@ -12,7 +12,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AudiobookButton">
+        android:theme="@style/Theme.WidgetButton">
 
         <activity
             android:name=".MainActivity"
@@ -36,7 +36,7 @@
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
             android:taskAffinity=""
-            android:theme="@style/Theme.AudiobookButton.Invisible" />
+            android:theme="@style/Theme.WidgetButton.Invisible" />
 
         <receiver
             android:name=".StopReceiver"
@@ -53,14 +53,14 @@
         </service>
 
         <receiver
-            android:name=".AudiobookWidgetProvider"
+            android:name=".PlayWidgetProvider"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/audiobook_widget_info" />
+                android:resource="@xml/play_widget_info" />
         </receiver>
     </application>
 </manifest>

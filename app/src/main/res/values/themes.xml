@@ -1,7 +1,7 @@
 <resources>
-    <style name="Theme.AudiobookButton" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.WidgetButton" parent="android:Theme.Material.Light.NoActionBar" />
 
-    <style name="Theme.AudiobookButton.Invisible" parent="android:Theme.Translucent.NoTitleBar">
+    <style name="Theme.WidgetButton.Invisible" parent="android:Theme.Translucent.NoTitleBar">
         <item name="android:windowNoDisplay">false</item>
         <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowBackground">@android:color/transparent</item>

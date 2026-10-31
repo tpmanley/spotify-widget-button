@@ -1,4 +1,4 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import android.content.ComponentName
 import android.content.Intent
@@ -39,7 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
-/** Edit screen: choose which audiobook the widget plays. */
+/** Edit screen: choose what the widget plays. */
 class MainActivity : ComponentActivity() {
 
     private var sharedText by mutableStateOf<String?>(null)
@@ -48,9 +48,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        lastResult = BookStore.lastResult(this)
+        lastResult = ItemStore.lastResult(this)
         stopEnabled = PlaybackStatus.hasAccess(this)
-        AudiobookWidgetProvider.refreshAll(this)
+        PlayWidgetProvider.refreshAll(this)
     }
 
     private fun openNotificationAccess() {
@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         sharedText = extractShared(intent)
-        val saved = BookStore.load(this)
+        val saved = ItemStore.load(this)
         setContent {
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
                 Surface(Modifier.fillMaxSize()) {
@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                         onGrantStop = ::openNotificationAccess,
                         onAppInfo = ::openAppInfo,
                         onSave = ::save,
-                        onTest = { book -> save(book); startActivity(Intent(this, PlayActivity::class.java)) },
+                        onTest = { item -> save(item); startActivity(Intent(this, PlayActivity::class.java)) },
                     )
                 }
             }
@@ -98,29 +98,29 @@ class MainActivity : ComponentActivity() {
     private fun extractShared(intent: Intent?): String? =
         if (intent?.action == Intent.ACTION_SEND) intent.getStringExtra(Intent.EXTRA_TEXT) else null
 
-    private fun save(book: Book) {
-        BookStore.save(this, book)
-        AudiobookWidgetProvider.refreshAll(this)
+    private fun save(item: SpotifyItem) {
+        ItemStore.save(this, item)
+        PlayWidgetProvider.refreshAll(this)
         Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
     }
 }
 
 @Composable
 private fun EditScreen(
-    initial: Book?,
+    initial: SpotifyItem?,
     sharedText: String?,
     lastResult: String?,
     stopEnabled: Boolean,
     onGrantStop: () -> Unit,
     onAppInfo: () -> Unit,
-    onSave: (Book) -> Unit,
-    onTest: (Book) -> Unit,
+    onSave: (SpotifyItem) -> Unit,
+    onTest: (SpotifyItem) -> Unit,
 ) {
     var link by remember { mutableStateOf(initial?.uri.orEmpty()) }
     var title by remember { mutableStateOf(initial?.title.orEmpty()) }
     var titleEdited by remember { mutableStateOf(initial?.title?.isNotBlank() == true) }
 
-    // Pre-fill from "Share → Audiobook Button".
+    // Pre-fill from the Share sheet.
     LaunchedEffect(sharedText) {
         if (sharedText != null) {
             link = sharedText
@@ -166,10 +166,10 @@ private fun EditScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(enabled = uri != null, onClick = { onSave(Book(uri!!, title.trim())) }) {
+            Button(enabled = uri != null, onClick = { onSave(SpotifyItem(uri!!, title.trim())) }) {
                 Text(stringResource(R.string.save))
             }
-            OutlinedButton(enabled = uri != null, onClick = { onTest(Book(uri!!, title.trim())) }) {
+            OutlinedButton(enabled = uri != null, onClick = { onTest(SpotifyItem(uri!!, title.trim())) }) {
                 Text(stringResource(R.string.test_play))
             }
         }

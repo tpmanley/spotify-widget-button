@@ -5,18 +5,18 @@ plugins {
 }
 
 android {
-    namespace = "com.tpmanley.audiobookbutton"
+    namespace = "com.tpmanley.spotifywidgetbutton"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.tpmanley.audiobookbutton"
+        applicationId = "com.tpmanley.spotifywidgetbutton"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
-        // Used by the Spotify auth library's redirect receiver: audiobookbutton://callback
-        manifestPlaceholders["redirectSchemeName"] = "audiobookbutton"
+        // Used by the Spotify auth library's redirect receiver: spotifywidgetbutton://callback
+        manifestPlaceholders["redirectSchemeName"] = "spotifywidgetbutton"
         manifestPlaceholders["redirectHostName"] = "callback"
     }
 

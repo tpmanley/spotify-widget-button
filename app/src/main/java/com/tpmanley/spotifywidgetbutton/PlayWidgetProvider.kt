@@ -1,4 +1,4 @@
-package com.tpmanley.audiobookbutton
+package com.tpmanley.spotifywidgetbutton
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 
-class AudiobookWidgetProvider : AppWidgetProvider() {
+class PlayWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) {
         val views = buildViews(context)
@@ -18,7 +18,7 @@ class AudiobookWidgetProvider : AppWidgetProvider() {
     companion object {
         fun refreshAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(ComponentName(context, AudiobookWidgetProvider::class.java))
+            val ids = manager.getAppWidgetIds(ComponentName(context, PlayWidgetProvider::class.java))
             if (ids.isNotEmpty()) {
                 val views = buildViews(context)
                 ids.forEach { manager.updateAppWidget(it, views) }
@@ -26,17 +26,17 @@ class AudiobookWidgetProvider : AppWidgetProvider() {
         }
 
         private fun buildViews(context: Context): RemoteViews {
-            val book = BookStore.load(context)
-            val views = RemoteViews(context.packageName, R.layout.widget_audiobook)
+            val item = ItemStore.load(context)
+            val views = RemoteViews(context.packageName, R.layout.widget_play)
 
-            val label = if (book == null) context.getString(R.string.widget_not_set)
-            else book.title.ifBlank { context.getString(R.string.widget_untitled) }
+            val label = if (item == null) context.getString(R.string.widget_not_set)
+            else item.title.ifBlank { context.getString(R.string.widget_untitled) }
             views.setTextViewText(R.id.widget_title, label)
 
             // One button that toggles: Stop while Spotify is playing on this phone, otherwise Play.
-            val playingHere = book != null && PlaybackStatus.isPlayingLocally(context)
+            val playingHere = item != null && PlaybackStatus.isPlayingLocally(context)
             val click = when {
-                book == null -> PendingIntent.getActivity(
+                item == null -> PendingIntent.getActivity(
                     context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
