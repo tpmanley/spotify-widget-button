@@ -2,7 +2,7 @@
     <!-- Not "Spotify …": Spotify's developer terms don't allow its name in app names. -->
     <string name="app_name">One-Tap Play</string>
     <string name="share_label">Set as One-Tap Play</string>
-    <string name="widget_description">One tap to play your chosen audiobook, podcast, album or playlist in Spotify</string>
+    <string name="widget_description">One tap to play your chosen audiobook, podcast, album, playlist, artist or song in Spotify</string>
     <string name="widget_not_set">Tap to choose what to play</string>
     <string name="widget_untitled">Play</string>
     <string name="edit_heading">What should the widget play?</string>
@@ -20,6 +20,8 @@
     <string name="error_play">Spotify couldn\'t play it (%1$s)</string>
     <string name="error_auth">Spotify approval failed (%1$s)</string>
     <string name="error_not_logged_in">Log in to the Spotify app first</string>
+    <string name="reason_no_response">no response</string>
+    <string name="reason_cancelled">cancelled</string>
     <string name="last_result">Last widget tap</string>
     <string name="stop">Stop</string>
     <string name="play">Play</string>

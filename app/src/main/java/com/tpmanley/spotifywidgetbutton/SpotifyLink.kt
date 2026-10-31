@@ -17,8 +17,31 @@ object SpotifyLink {
         return "spotify:$type:$id"
     }
 
-    /** The 22-char id at the end of a `spotify:<type>:<id>` URI. */
-    fun idOf(uri: String): String? = URI_RE.matchEntire(uri)?.groupValues?.get(2)
+    // Type and id are the last two segments, which also covers longer forms Spotify reports
+    // for contexts, e.g. spotify:user:<owner>:playlist:<id> or spotify:station:artist:<id>.
+    private val TAIL_RE = Regex("""spotify:(?:[^:]+:)*([a-z]+):([A-Za-z0-9]{22})""")
+    private val SINGLE_TYPES = setOf("track", "episode", "chapter")
+    // The player may report an audiobook as a show with the same id.
+    private val BOOK_TYPES = setOf("audiobook", "show")
+
+    /** The 22-char id at the end of a Spotify URI. */
+    fun idOf(uri: String): String? = TAIL_RE.matchEntire(uri)?.groupValues?.get(2)
+
+    /** The item type (track, album, playlist, …) of a Spotify URI. */
+    fun typeOf(uri: String): String? = TAIL_RE.matchEntire(uri)?.groupValues?.get(1)
+
+    /** Tracks, episodes and chapters play as the current track; everything else is a context. */
+    fun isSingleItem(uri: String): Boolean = typeOf(uri) in SINGLE_TYPES
+
+    /** Whether two URIs name the same item: same id and same type (audiobook ≡ show). */
+    fun sameItem(a: String?, b: String?): Boolean {
+        if (a == null || b == null) return false
+        val ta = TAIL_RE.matchEntire(a) ?: return false
+        val tb = TAIL_RE.matchEntire(b) ?: return false
+        val (typeA, idA) = ta.destructured
+        val (typeB, idB) = tb.destructured
+        return idA == idB && (typeA == typeB || (typeA in BOOK_TYPES && typeB in BOOK_TYPES))
+    }
 
     /**
      * Spotify's player sometimes knows audiobooks as shows (same id), so

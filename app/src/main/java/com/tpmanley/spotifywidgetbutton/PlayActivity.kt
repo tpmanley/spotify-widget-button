@@ -182,7 +182,7 @@ class PlayActivity : Activity() {
             }
             // Still silent after waking Spotify: maybe it's waiting on approval.
             !authTried -> requestAuthorization(forCheck = false)
-            else -> fail(item, getString(R.string.error_connect, error?.let(::describe) ?: "no response"))
+            else -> fail(item, getString(R.string.error_connect, error?.let(::describe) ?: getString(R.string.reason_no_response)))
         }
     }
 
@@ -219,7 +219,7 @@ class PlayActivity : Activity() {
                 else fail(item, getString(R.string.error_auth, response.error.orEmpty()))
             else ->
                 if (authForCheck) startConnecting(item)
-                else fail(item, getString(R.string.error_auth, "cancelled"))
+                else fail(item, getString(R.string.error_auth, getString(R.string.reason_cancelled)))
         }
     }
 
@@ -240,7 +240,6 @@ class PlayActivity : Activity() {
     private fun playOrResume(appRemote: SpotifyAppRemote, item: SpotifyItem) {
         val player = appRemote.playerApi
         var decided = false
-        val itemId = SpotifyLink.idOf(item.uri)
 
         fun playUri(uri: String, fallback: String?) {
             step("play($uri)")
@@ -265,18 +264,19 @@ class PlayActivity : Activity() {
                     step("Player: paused=${state.isPaused} track=${state.track?.uri} (${state.track?.name})")
                     if (!state.isPaused) succeed("Playing (Spotify never confirmed)")
                     else if (fallback != null) playUri(fallback, null)
-                    else fail(item, getString(R.string.error_play, "no response"))
+                    else fail(item, getString(R.string.error_play, getString(R.string.reason_no_response)))
                 }.setErrorCallback { step("Player state failed: ${describe(it)}") }
             }, 5_000)
         }
 
         fun play() {
-            if (decided) return
+            if (decided || done) return
             decided = true
             playUri(item.uri, SpotifyLink.alternateUri(item.uri))
         }
 
         fun resumeOrKeepPlaying(isPaused: Boolean, what: String) {
+            if (decided || done) return
             decided = true
             if (isPaused) {
                 player.resume().setResultCallback { succeed("Resumed $what") }
@@ -286,43 +286,49 @@ class PlayActivity : Activity() {
             }
         }
 
-        // If the saved item is already loaded, resume rather than restart it. Single tracks,
-        // episodes and chapters are matched against the current track; albums, playlists,
-        // shows, audiobooks and artists against the current context (below).
-        var contextChecked = false
-        fun checkContext() {
-            if (contextChecked || decided) return
-            contextChecked = true
-            val sub = player.subscribeToPlayerContext()
-            sub.setEventCallback { ctx: PlayerContext ->
-                if (decided) return@setEventCallback
-                sub.cancel()
-                step("Current context: ${ctx.uri}")
-                if (itemId != null && ctx.uri != null && SpotifyLink.idOf(ctx.uri) == itemId) {
-                    decided = true
-                    player.playerState.setResultCallback { state -> resumeOrKeepPlaying(state.isPaused, ctx.uri) }
-                        .setErrorCallback { decided = false; play() }
+        // If the saved item is already loaded, resume rather than restart it.
+        if (SpotifyLink.isSingleItem(item.uri)) {
+            // Tracks, episodes and chapters: compare with the current track.
+            player.playerState.setResultCallback { state ->
+                if (SpotifyLink.sameItem(state.track?.uri, item.uri)) {
+                    step("Current track is the saved item")
+                    resumeOrKeepPlaying(state.isPaused, item.uri)
                 } else {
                     play()
                 }
+            }.setErrorCallback { step("Player state failed: ${describe(it)}"); play() }
+            handler.postDelayed({ if (!decided && !done) { step("No player state after 1.5s"); play() } }, 1_500)
+        } else {
+            // Albums, playlists, shows, audiobooks, artists: compare with the current context.
+            // Ask for the context and the paused flag at the same time, then decide once we have
+            // what we need.
+            var paused: Boolean? = null
+            var context: PlayerContext? = null
+            fun decide() {
+                val ctx = context ?: return
+                if (!SpotifyLink.sameItem(ctx.uri, item.uri)) play()
+                else paused?.let { step("Current context is the saved item"); resumeOrKeepPlaying(it, ctx.uri) }
+            }
+            player.playerState.setResultCallback { paused = it.isPaused; decide() }
+            val sub = player.subscribeToPlayerContext()
+            sub.setEventCallback { ctx: PlayerContext ->
+                if (context != null) return@setEventCallback
+                sub.cancel()
+                step("Current context: ${ctx.uri}")
+                context = ctx
+                decide()
             }.setErrorCallback { step("Context subscription failed: ${describe(it)}"); play() }
-            // Some Spotify versions never emit a context event when idle.
             handler.postDelayed({
-                if (!decided) step("No context after 1.5s")
-                sub.cancel(); play()
+                sub.cancel()
+                val ctx = context
+                when {
+                    decided || done -> {}
+                    // Context matches but the paused flag never came: resume() is harmless if playing.
+                    ctx != null && SpotifyLink.sameItem(ctx.uri, item.uri) -> resumeOrKeepPlaying(true, ctx.uri)
+                    else -> { step("No context after 1.5s"); play() }
+                }
             }, 1_500)
         }
-
-        player.playerState.setResultCallback { state ->
-            val trackUri = state.track?.uri
-            if (!decided && itemId != null && trackUri != null && SpotifyLink.idOf(trackUri) == itemId) {
-                step("Current track is the saved item")
-                resumeOrKeepPlaying(state.isPaused, trackUri)
-            } else {
-                checkContext()
-            }
-        }.setErrorCallback { checkContext() }
-        handler.postDelayed({ checkContext() }, 1_500) // in case the player state never arrives
     }
 
     private fun describe(error: Throwable): String =

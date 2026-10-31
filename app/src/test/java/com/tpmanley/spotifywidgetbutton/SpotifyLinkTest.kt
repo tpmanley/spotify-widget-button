@@ -1,6 +1,8 @@
 package com.tpmanley.spotifywidgetbutton
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -53,4 +55,26 @@ class SpotifyLinkTest {
         assertEquals("spotify:artist:$id", SpotifyLink.toUri("https://open.spotify.com/artist/$id"))
 
     @Test fun trackUri() = assertEquals("spotify:track:$id", SpotifyLink.toUri("spotify:track:$id"))
+
+    @Test fun idOfLegacyPlaylistUri() = assertEquals(id, SpotifyLink.idOf("spotify:user:someone:playlist:$id"))
+
+    @Test fun typeOfArtistStation() = assertEquals("artist", SpotifyLink.typeOf("spotify:station:artist:$id"))
+
+    @Test fun legacyPlaylistIsSameItem() =
+        assertTrue(SpotifyLink.sameItem("spotify:user:someone:playlist:$id", "spotify:playlist:$id"))
+
+    @Test fun audiobookAndShowAreSameItem() =
+        assertTrue(SpotifyLink.sameItem("spotify:show:$id", "spotify:audiobook:$id"))
+
+    @Test fun sameIdDifferentTypeIsNotSameItem() =
+        assertFalse(SpotifyLink.sameItem("spotify:track:$id", "spotify:album:$id"))
+
+    @Test fun nullIsNotSameItem() = assertFalse(SpotifyLink.sameItem(null, "spotify:album:$id"))
+
+    @Test fun singleItems() {
+        assertTrue(SpotifyLink.isSingleItem("spotify:track:$id"))
+        assertTrue(SpotifyLink.isSingleItem("spotify:episode:$id"))
+        assertFalse(SpotifyLink.isSingleItem("spotify:playlist:$id"))
+        assertFalse(SpotifyLink.isSingleItem("spotify:audiobook:$id"))
+    }
 }

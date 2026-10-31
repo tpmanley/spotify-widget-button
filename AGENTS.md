@@ -37,9 +37,10 @@ These are confirmed on a real device (Oct 2026). Don't "simplify" them away.
 - **Adding OAuth scopes triggers a new approval prompt**, so change `PlayActivity.SCOPES` sparingly.
 - **`AUTHENTICATION_SERVICE_UNAVAILABLE` means the Spotify dashboard doesn't match** the package name, SHA-1 or redirect URI. It's not a code bug.
 - **Activities that must survive another app coming to the front can't use `noHistory`.** That attribute broke the "open Spotify and retry" path.
-- **Audiobooks may be saved as `spotify:show:` URIs.** Playback tries the alternate form (`SpotifyLink.alternateUri`), and the "already playing" check compares IDs, not full URIs.
+- **Audiobooks may be saved as `spotify:show:` URIs.** Playback tries the alternate form (`SpotifyLink.alternateUri`), and the "already loaded" check uses `SpotifyLink.sameItem` (same id and type, audiobook ≡ show, tolerant of long context URIs like `spotify:user:<owner>:playlist:<id>`).
 
 ## Conventions
 - Keep it general, not audiobook-specific. Keep it small and dependency-light. The widget uses plain `RemoteViews`, not Glance.
 - A failed "other device" check must never block playback. Just continue.
+- Every async Spotify callback in `PlayActivity` must check `done` (and `decided` where relevant) before acting. Late callbacks after a timeout or failure are normal.
 - User-facing strings go in `res/values/strings.xml`.
